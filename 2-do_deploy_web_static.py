@@ -1,29 +1,46 @@
 #!/usr/bin/python3
-"""web server distribution"""
-from fabric.api import *
-import os.path
+"""
+Fabric script to deploy tgz archive
+fab -f 2-do_deploy_web_static.py do_deploy:archive_path=filepath
+    -i private-key -u user
+"""
 
-env.user = 'ubuntu'
-env.hosts = ["104.196.155.240", "34.74.146.120"]
-env.key_filename = "~/id_rsa"
+from os.path import exists
+from fabric.api import put, run, env
+
+env.hosts = ['35.243.128.200', '3.239.120.96']
 
 
 def do_deploy(archive_path):
-    """distributes an archive to your web servers
     """
-    if os.path.exists(archive_path) is False:
+    copies archive file from local to my webservers
+    """
+
+    if not exists(archive_path):
         return False
     try:
-        arc = archive_path.split("/")
-        base = arc[1].strip('.tgz')
-        put(archive_path, '/tmp/')
-        sudo('mkdir -p /data/web_static/releases/{}'.format(base))
-        main = "/data/web_static/releases/{}".format(base)
-        sudo('tar -xzf /tmp/{} -C {}/'.format(arc[1], main))
-        sudo('rm /tmp/{}'.format(arc[1]))
-        sudo('mv {}/web_static/* {}/'.format(main, main))
-        sudo('rm -rf /data/web_static/current')
-        sudo('ln -s {}/ "/data/web_static/current"'.format(main))
+        file_name = archive_path.split("/")[-1].split(".")[0]
+        put(archive_path, "/tmp/")
+
+        run("mkdir -p /data/web_static/releases/{}".format(file_name))
+
+        run("tar -xzf /tmp/{}.tgz -C /data/web_static/releases/{}/"
+            .format(file_name, file_name))
+
+        run('rm -rf /tmp/{}.tgz'.format(file_name))
+
+        run(('mv /data/web_static/releases/{}/web_static/* ' +
+            '/data/web_static/releases/{}/')
+            .format(file_name, file_name))
+
+        run('rm -rf /data/web_static/releases/{}/web_static'
+            .format(file_name))
+
+        run('rm -rf /data/web_static/current')
+
+        run(('ln -s /data/web_static/releases/{}/' +
+            ' /data/web_static/current')
+            .format(file_name))
         return True
-    except:
+    except Exception:
         return False
